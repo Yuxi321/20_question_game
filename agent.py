@@ -1,5 +1,6 @@
 """Module containing agent implementations for the 20 questions game."""
-# pylint: disable-msg=C0301,R0903,W0718
+# pylint: disable-msg=C0301,R0903,W0718,W0201
+import random
 from typing import Tuple
 
 from game_state import GameState
@@ -87,7 +88,6 @@ class GuesserAgent(BaseAgent):
 
         try:
             question = self.llm.generate_response(question_prompt)
-            # Validate question format
             is_valid, error_msg = self.validator.is_valid_question(question=question, game_state=game_state)
             if not is_valid:
                 return False, error_msg
@@ -102,3 +102,28 @@ class GuesserAgent(BaseAgent):
             return True, question
         except Exception:
             return False, "Problem interacting with llm"
+
+
+class MultipleGuesserAgent(GuesserAgent):
+    """Multi-agents version of GuesserAgent that ask questions competitively"""
+
+    def reset_thinking_time(self):
+        """
+        Reset thinking time for each agent to add randomness
+        """
+        self.thinking_time = random.uniform(0.5, 2.0)
+
+    async def generate_question_async(self, game_state: GameState) -> Tuple[bool, str]:
+        """
+        Generate question for each async agent
+        """
+        try:
+            self.reset_thinking_time()
+            is_valid, question = self.generate_question(game_state)
+
+            if is_valid:
+                return is_valid, question
+
+        except Exception as exception:
+            print(f"Agent {self.name} encountered error: {str(exception)}")
+            return False, f"Error generating question: {str(exception)}"
